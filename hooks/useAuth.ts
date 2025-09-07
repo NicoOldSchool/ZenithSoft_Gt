@@ -2,44 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { User, Session } from '@supabase/supabase-js'
 import { User as AppUser } from '@/types/database'
+import { useSupabase } from '@/lib/supabase-context'
 
 export function useAuth() {
+  const { supabase } = useSupabase()
   const [user, setUser] = useState<User | null>(null)
   const [appUser, setAppUser] = useState<AppUser | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClientComponentClient()
 
   useEffect(() => {
+    let mounted = true
+
     // Obtener sesión inicial
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        // Obtener datos del usuario desde nuestra tabla
-        const { data: appUserData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!mounted) return
         
-        setAppUser(appUserData)
-      }
-      
-      setLoading(false)
-    }
-
-    getSession()
-
-    // Escuchar cambios en la autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
         setSession(session)
         setUser(session?.user ?? null)
         
@@ -51,17 +34,64 @@ export function useAuth() {
             .eq('id', session.user.id)
             .single()
           
-          setAppUser(appUserData)
-        } else {
-          setAppUser(null)
+          if (mounted) {
+            setAppUser(appUserData)
+          }
         }
         
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error getting session:', error)
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    getSession()
+
+    // Escuchar cambios en la autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return
+        
+        setSession(session)
+        setUser(session?.user ?? null)
+        
+        if (session?.user) {
+          try {
+            // Obtener datos del usuario desde nuestra tabla
+            const { data: appUserData } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+            
+            if (mounted) {
+              setAppUser(appUserData)
+            }
+          } catch (error) {
+            console.error('Error getting user data:', error)
+          }
+        } else {
+          if (mounted) {
+            setAppUser(null)
+          }
+        }
+        
+        if (mounted) {
+          setLoading(false)
+        }
       }
     )
 
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -93,23 +123,6 @@ export function useAuth() {
     return { error }
   }
 
-  const updateProfile = async (updates: Partial<AppUser>) => {
-    if (!user) return { error: new Error('No user logged in') }
-    
-    const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single()
-    
-    if (!error && data) {
-      setAppUser(data)
-    }
-    
-    return { data, error }
-  }
-
   return {
     user,
     appUser,
@@ -118,7 +131,6 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
-    updateProfile,
     isAuthenticated: !!user,
   }
 }

@@ -1,13 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Database } from '@/types/database'
+import { supabase } from '@/lib/supabase'
 
 export function SupabaseTest() {
   const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
-  const supabase = createClientComponentClient<Database>()
 
   const testConnection = async () => {
     setStatus('testing')

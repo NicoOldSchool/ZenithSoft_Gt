@@ -1,9 +1,9 @@
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { LogOut, Menu } from 'lucide-react'
 import { User } from '@/types/database'
+import { useSupabase } from '@/lib/supabase-context'
 
 interface DashboardHeaderProps {
   user: User
@@ -11,7 +11,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const { supabase } = useSupabase()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

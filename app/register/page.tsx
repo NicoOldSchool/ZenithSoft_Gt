@@ -2,108 +2,54 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Eye, EyeOff, Mail, Lock, User, Building } from 'lucide-react'
-import toast from 'react-hot-toast'
+import Link from 'next/link'
+import { useSupabase } from '@/lib/supabase-context'
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    establecimiento: '',
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const router = useRouter()
-  const supabase = createClientComponentClient()
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
+  const { supabase } = useSupabase()
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
+    setSuccess('')
 
-    // Validaciones
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Las contraseñas no coinciden')
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden')
       setLoading(false)
       return
     }
 
-    if (formData.password.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres')
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres')
       setLoading(false)
       return
     }
 
     try {
-      // 1. Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            nombre: formData.nombre,
-          },
-        },
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
       })
 
-      if (authError) {
-        toast.error(authError.message)
-        return
+      if (error) {
+        setError(error.message)
+      } else {
+        setSuccess('¡Usuario creado exitosamente! Revisa tu email para confirmar la cuenta.')
+        // Opcional: redirigir después de 3 segundos
+        setTimeout(() => {
+          router.push('/login')
+        }, 3000)
       }
-
-      if (authData.user) {
-        // 2. Crear o obtener establecimiento
-        let establecimientoId = formData.establecimiento
-
-        if (formData.establecimiento === 'new') {
-          // Crear nuevo establecimiento
-          const { data: establecimientoData, error: establecimientoError } = await supabase
-            .from('establecimientos')
-            .insert([{ nombre: formData.nombre + ' - Establecimiento' }])
-            .select()
-            .single()
-
-          if (establecimientoError) {
-            toast.error('Error al crear establecimiento')
-            return
-          }
-
-          establecimientoId = establecimientoData.id
-        }
-
-        // 3. Crear registro en la tabla users
-        const { error: userError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              nombre: formData.nombre,
-              email: formData.email,
-              rol: 'admin', // El primer usuario es admin
-              establecimiento_id: establecimientoId,
-            },
-          ])
-
-        if (userError) {
-          toast.error('Error al crear perfil de usuario')
-          return
-        }
-
-        toast.success('Registro exitoso! Revisa tu email para confirmar la cuenta.')
-        router.push('/login')
-      }
-    } catch (error) {
-      toast.error('Error al registrar usuario')
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -114,134 +60,81 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Crear cuenta
+            Sistema Médico
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Regístrate en el sistema médico
+            Crear nueva cuenta
           </p>
         </div>
+        
         <form className="mt-8 space-y-6" onSubmit={handleRegister}>
           <div className="space-y-4">
-            <div>
-              <label htmlFor="nombre" className="block text-sm font-medium text-gray-700">
-                Nombre completo
-              </label>
-              <div className="mt-1 relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  id="nombre"
-                  name="nombre"
-                  type="text"
-                  required
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="input pl-10"
-                  placeholder="Tu nombre completo"
-                />
-              </div>
-            </div>
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
-              <div className="mt-1 relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="input pl-10"
-                  placeholder="tu@email.com"
-                />
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
-
-            <div>
-              <label htmlFor="establecimiento" className="block text-sm font-medium text-gray-700">
-                Establecimiento
-              </label>
-              <div className="mt-1 relative">
-                <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <select
-                  id="establecimiento"
-                  name="establecimiento"
-                  required
-                  value={formData.establecimiento}
-                  onChange={handleInputChange}
-                  className="input pl-10"
-                >
-                  <option value="">Selecciona un establecimiento</option>
-                  <option value="new">Crear nuevo establecimiento</option>
-                  {/* Aquí se podrían cargar establecimientos existentes */}
-                </select>
-              </div>
-            </div>
-
+            
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Contraseña
               </label>
-              <div className="mt-1 relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="input pl-10 pr-10"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Mínimo 6 caracteres"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-
+            
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirmar contraseña
+                Confirmar Contraseña
               </label>
-              <div className="mt-1 relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="input pl-10 pr-10"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Repite la contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
             </div>
           </div>
+
+          {error && (
+            <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="text-green-600 text-sm text-center bg-green-50 p-3 rounded-md">
+              {success}
+            </div>
+          )}
 
           <div>
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary w-full h-12"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
               {loading ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>
@@ -250,13 +143,9 @@ export default function RegisterPage() {
           <div className="text-center">
             <p className="text-sm text-gray-600">
               ¿Ya tienes cuenta?{' '}
-              <button
-                type="button"
-                onClick={() => router.push('/login')}
-                className="font-medium text-primary-600 hover:text-primary-500"
-              >
+              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
                 Inicia sesión aquí
-              </button>
+              </Link>
             </p>
           </div>
         </form>
