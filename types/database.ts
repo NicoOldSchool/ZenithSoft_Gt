@@ -1,25 +1,81 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export interface Database {
   public: {
     Tables: {
       establecimientos: {
         Row: {
+          created_at: string
           id: string
           nombre: string
-          created_at: string
-          updated_at: string
+          owner_id: string | null
         }
         Insert: {
+          created_at?: string
           id?: string
           nombre: string
-          created_at?: string
-          updated_at?: string
+          owner_id?: string | null
         }
         Update: {
+          created_at?: string
           id?: string
           nombre?: string
-          created_at?: string
-          updated_at?: string
+          owner_id?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "establecimientos_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      miembros_establecimiento: {
+        Row: {
+          created_at: string
+          establecimiento_id: string
+          id: number
+          role: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          establecimiento_id: string
+          id?: number
+          role?: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          establecimiento_id?: string
+          id?: number
+          role?: Database["public"]["Enums"]["member_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "miembros_establecimiento_establecimiento_id_fkey"
+            columns: ["establecimiento_id"]
+            isOneToOne: false
+            referencedRelation: "establecimientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miembros_establecimiento_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -166,79 +222,156 @@ export interface Database {
       }
       aranceles: {
         Row: {
-          id: string
-          codigo: string
-          nombre: string
-          categoria: string | null
-          valor: number | null
           activo: boolean
-          establecimiento_id: string
+          categoria: string | null
+          codigo: string
           created_at: string
+          establecimiento_id: string | null
+          id: string
+          nombre: string
           updated_at: string
+          valor: number | null
         }
         Insert: {
-          id?: string
-          codigo: string
-          nombre: string
-          categoria?: string | null
-          valor?: number | null
           activo?: boolean
-          establecimiento_id: string
+          categoria?: string | null
+          codigo: string
           created_at?: string
+          establecimiento_id?: string | null
+          id?: string
+          nombre: string
           updated_at?: string
+          valor?: number | null
         }
         Update: {
-          id?: string
-          codigo?: string
-          nombre?: string
-          categoria?: string | null
-          valor?: number | null
           activo?: boolean
-          establecimiento_id?: string
+          categoria?: string | null
+          codigo?: string
           created_at?: string
+          establecimiento_id?: string | null
+          id?: string
+          nombre?: string
           updated_at?: string
+          valor?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "aranceles_establecimiento_id_fkey"
+            columns: ["establecimiento_id"]
+            isOneToOne: false
+            referencedRelation: "establecimientos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       practicas: {
         Row: {
-          id: string
-          codigo: string
-          nombre: string
           categoria: string | null
-          turno_id: string
-          establecimiento_id: string
+          codigo: string
           created_at: string
+          establecimiento_id: string | null
+          id: string
+          nombre: string
+          turno_id: string | null
           updated_at: string
         }
         Insert: {
-          id?: string
-          codigo: string
-          nombre: string
           categoria?: string | null
-          turno_id: string
-          establecimiento_id: string
+          codigo: string
           created_at?: string
+          establecimiento_id?: string | null
+          id?: string
+          nombre: string
+          turno_id?: string | null
           updated_at?: string
         }
         Update: {
-          id?: string
-          codigo?: string
-          nombre?: string
           categoria?: string | null
-          turno_id?: string
-          establecimiento_id?: string
+          codigo?: string
           created_at?: string
+          establecimiento_id?: string | null
+          id?: string
+          nombre?: string
+          turno_id?: string | null
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "practicas_establecimiento_id_fkey"
+            columns: ["establecimiento_id"]
+            isOneToOne: false
+            referencedRelation: "establecimientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicas_turno_id_fkey"
+            columns: ["turno_id"]
+            isOneToOne: false
+            referencedRelation: "turnos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          establecimiento_id: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          username: string | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          establecimiento_id?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          establecimiento_id?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_establecimiento_id_fkey"
+            columns: ["establecimiento_id"]
+            isOneToOne: false
+            referencedRelation: "establecimientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_establishment_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
+      member_role: "admin" | "member"
+      user_role: "admin" | "member"
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }

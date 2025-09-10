@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Session } from '@supabase/supabase-js'
+import { User as AuthUser, Session } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 import { User as AppUser } from '@/types/database'
-import { useSupabase } from '@/lib/supabase-context'
 
 export function useAuth() {
-  const { supabase } = useSupabase()
-  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [appUser, setAppUser] = useState<AppUser | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +27,7 @@ export function useAuth() {
         setUser(session?.user ?? null)
         
         if (session?.user) {
-          // Obtener datos del usuario desde nuestra tabla
+          // Obtener datos del usuario desde nuestra tabla de users
           const { data: appUserData } = await supabase
             .from('users')
             .select('*')

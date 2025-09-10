@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
+import toast from 'react-hot-toast'
 
 import { Paciente, PacienteUpdate, PacienteInsert } from '@/types/database'
 
@@ -18,6 +19,7 @@ interface HistorialMedico {
 }
 
 export default function PacientesPage() {
+  const supabase = createClient()
   const [pacientes, setPacientes] = useState<Paciente[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -41,9 +43,13 @@ export default function PacientesPage() {
 
   const fetchPacientes = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuario no autenticado')
+
       const { data, error } = await supabase
         .from('pacientes')
         .select('*')
+        .eq('user_id', user.id) // <- Solo pacientes del usuario actual
         .eq('activo', true)
         .order('apellido', { ascending: true })
 
@@ -106,9 +112,12 @@ export default function PacientesPage() {
     if (!validateForm()) return
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuario no autenticado')
+
       if (editingPaciente) {
         // Actualizar paciente existente
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('pacientes')
           .update({
             dni: formData.dni,
@@ -120,16 +129,31 @@ export default function PacientesPage() {
           .eq('id', editingPaciente.id)
 
         if (error) throw error
+        toast.success('Paciente actualizado correctamente')
       } else {
         // Crear nuevo paciente
-        const { error } = await (supabase as any)
+        // 1. Obtener el perfil del usuario para conseguir su establecimiento_id
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('establecimiento_id')
+          .eq('id', user.id)
+          .single()
+
+        if (profileError || !userProfile) {
+          throw new Error('No se pudo encontrar el perfil del usuario o no tiene un establecimiento asociado.')
+        }
+
+        // 2. Insertar el paciente con el establecimiento_id correcto
+        const { error } = await supabase
           .from('pacientes')
           .insert([{
             ...formData,
-            establecimiento_id: 'default-establecimiento-id' // TODO: Obtener del usuario logueado
+            user_id: user.id, // Asociar el ID del usuario
+            establecimiento_id: userProfile.establecimiento_id
           }])
 
         if (error) throw error
+        toast.success('Paciente creado correctamente')
       }
 
       await fetchPacientes()
@@ -139,6 +163,9 @@ export default function PacientesPage() {
       console.error('Error saving paciente:', error)
       if (error.message.includes('duplicate key')) {
         setErrors({ dni: 'Ya existe un paciente con este DNI' })
+        toast.error('Ya existe un paciente con este DNI.')
+      } else {
+        toast.error('Error al guardar el paciente.')
       }
     }
   }
@@ -159,15 +186,17 @@ export default function PacientesPage() {
     if (!confirm(`¿Estás seguro de eliminar a ${paciente.nombre} ${paciente.apellido}?`)) return
 
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('pacientes')
         .delete()
         .eq('id', paciente.id)
 
       if (error) throw error
+      toast.success('Paciente eliminado correctamente')
       await fetchPacientes()
     } catch (error) {
       console.error('Error deleting paciente:', error)
+      toast.error('Error al eliminar el paciente.')
     }
   }
 

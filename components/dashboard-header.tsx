@@ -1,17 +1,17 @@
 'use client'
 
+import { createClient } from '@/lib/supabase/client'
+import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { LogOut, Menu } from 'lucide-react'
-import { User } from '@/types/database'
-import { useSupabase } from '@/lib/supabase-context'
 
 interface DashboardHeaderProps {
-  user: User
+  user: User | null
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   const router = useRouter()
-  const { supabase } = useSupabase()
+  const supabase = createClient()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -32,8 +32,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         <div className="flex items-center gap-x-4 lg:gap-x-6">
           <div className="flex items-center gap-x-4">
             <div className="text-sm">
-              <p className="font-medium text-gray-900">{user.nombre}</p>
-              <p className="text-gray-500">{user.rol}</p>
+              <p className="font-medium text-gray-900">{user?.nombre}</p>
+              <p className="text-gray-500">{user?.rol}</p>
             </div>
             <button
               onClick={handleLogout}

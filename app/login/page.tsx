@@ -1,29 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSupabase } from '@/lib/supabase-context'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 // Forzando redespliegue para limpiar caché de Vercel
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const router = useRouter()
-  const { supabase } = useSupabase()
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setSuccess('Inicio de sesión exitoso. Redirigiendo...')
-        router.replace('/dashboard')
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase, router])
+  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

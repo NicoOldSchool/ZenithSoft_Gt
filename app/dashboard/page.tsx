@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
 
 export default function DashboardPage() {
+  const supabase = createClient()
+  const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState({
     turnos: 0,
     pacientes: 0,

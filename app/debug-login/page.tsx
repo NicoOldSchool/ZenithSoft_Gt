@@ -1,12 +1,26 @@
 'use client'
 
-import { useSupabase } from '@/lib/supabase-context'
-import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
 
-export default function DebugLogin() {
-  const { supabase } = useSupabase()
-  const [testResult, setTestResult] = useState<string>('')
-  const [loading, setLoading] = useState(false)
+export default function DebugLoginPage() {
+  const supabase = createClient()
+  const [session, setSession] = useState<any>(null)
+  const [error, setError] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) {
+        setError(error)
+      } else {
+        setSession(data)
+      }
+      setLoading(false)
+    }
+    getSession()
+  }, [supabase])
 
   const testConnection = async () => {
     setLoading(true)
